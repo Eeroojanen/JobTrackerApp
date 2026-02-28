@@ -1,0 +1,114 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:JobTracker.ViewModels"
+        xmlns:models="using:JobTracker.Models"
+        xmlns:converters="using:Avalonia.Data.Converters"
+        xmlns:localConverters="using:JobTracker.Converters"
+        mc:Ignorable="d"
+        x:Class="JobTracker.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1100" Height="650"
+        MinWidth="1000" MinHeight="650"
+        Title="JobTracker">
+
+  <Design.DataContext>
+    <vm:MainWindowViewModel/>
+  </Design.DataContext>
+
+  <Window.Resources>
+    <localConverters:StatusToBrushConverter x:Key="StatusToBrushConverter" />
+  </Window.Resources>
+
+  <Grid RowDefinitions="Auto,*" Margin="16" RowSpacing="12">
+    <Border Padding="12" CornerRadius="10" BorderThickness="1">
+      <StackPanel Spacing="10">
+        <TextBlock FontSize="18" FontWeight="SemiBold" Text="Job Applications" />
+
+        <Grid ColumnDefinitions="260,180,140,160,120,120" ColumnSpacing="10">
+          <TextBox Grid.Column="0"
+                   Watermark="Company title"
+                   Text="{Binding CompanyName, UpdateSourceTrigger=PropertyChanged}" />
+
+          <ComboBox Grid.Column="1"
+                    ItemsSource="{Binding Statuses}"
+                    SelectedItem="{Binding SelectedStatus}"/>
+
+          <Button Grid.Column="2"
+                  Content="Add company"
+                  Command="{Binding AddCommand}" />
+
+          <Button Grid.Column="3"
+                  Content="Remove chosen"
+                  Command="{Binding DeleteSelectedCommand}"
+                  IsEnabled="{Binding SelectedApplication, Converter={x:Static converters:ObjectConverters.IsNotNull}}" />
+
+          <Button Grid.Column="4"
+                  Content="Import"
+                  Click="ImportFromExcel" />
+
+          <Button Grid.Column="5"
+                  Content="Clear all"
+                  Click="ConfirmClearAll" />
+        </Grid>
+
+        <TextBox Watermark="Search company"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+          <TextBox Watermark="Excel Company column (e.g., Firma)"
+                   Text="{Binding ImportCompanyHeader, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBox Grid.Column="1"
+                   Watermark="Excel Status column (e.g., Tila)"
+                   Text="{Binding ImportStatusHeader, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+          <TextBox Watermark="Status label for Proceed (e.g., Jatkoon)"
+                   Text="{Binding ImportProceedLabel, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBox Grid.Column="1"
+                   Watermark="Status label for Pending (e.g., Odottaa)"
+                   Text="{Binding ImportPendingLabel, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBox Grid.Column="2"
+                   Watermark="Status label for Rejected (e.g., Hylätty)"
+                   Text="{Binding ImportRejectedLabel, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="1" Padding="12" CornerRadius="10" BorderThickness="1">
+      <DataGrid ItemsSource="{Binding FilteredApplications}"
+                SelectedItem="{Binding SelectedApplication}"
+                AutoGenerateColumns="False"
+                IsReadOnly="False"
+                GridLinesVisibility="All">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Yritys" Binding="{Binding CompanyName}" Width="*"/>
+          <DataGridTemplateColumn Header="Status" Width="220">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="models:JobApplication">
+                <Border CornerRadius="4"
+                        Padding="6,2"
+                        Background="{Binding Status, Converter={StaticResource StatusToBrushConverter}}">
+                  <TextBlock Text="{Binding Status}"
+                             FontWeight="SemiBold"
+                             Foreground="White" />
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+            <DataGridTemplateColumn.CellEditingTemplate>
+              <DataTemplate x:DataType="models:JobApplication">
+                <ComboBox x:CompileBindings="False"
+                          ItemsSource="{Binding DataContext.Statuses, RelativeSource={RelativeSource AncestorType=Window}}"
+                          SelectedItem="{Binding Status, Mode=TwoWay}"
+                          SelectionChanged="StatusSelectionChanged"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellEditingTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Lisätty" Binding="{Binding CreatedAt}" Width="220"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </Border>
+  </Grid>
+</Window>

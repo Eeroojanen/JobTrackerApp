@@ -1,0 +1,47 @@
+# Build outputs
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.cache
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+**/project.assets.json
+**/project.nuget.cache
+**/*.nuget.g.props
+**/*.nuget.g.targets
+**/obj/*.csproj.nuget.dgspec.json
+**/obj/*.csproj.nuget.g.props
+**/obj/*.csproj.nuget.g.targets
+
+# Avalonia
+.avalonia/
+
+# Coverage
+*.coverage
+*.coveragexml
+TestResults/
+coverage/
+
+# App data (optional local)
+**/applications.json
