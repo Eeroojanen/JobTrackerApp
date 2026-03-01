@@ -20,6 +20,7 @@ namespace JobTracker.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly JobApplicationStore _store = new();
+    private readonly GmailSyncService _gmailSyncService = new();
 
     public ObservableCollection<JobApplication> Applications { get; } = new();
 
@@ -52,11 +53,21 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string importRejectedLabel = "Rejected";
 
+    [ObservableProperty]
+    private string gmailQuery = "newer_than:90d";
+
+    [ObservableProperty]
+    private string gmailStatusMessage = "";
+
+    [ObservableProperty]
+    private bool isGmailSyncInProgress;
+
     public ApplicationStatus[] Statuses { get; } =
         Enum.GetValues(typeof(ApplicationStatus)).Cast<ApplicationStatus>().ToArray();
 
     public MainWindowViewModel()
     {
+        GmailStatusMessage = _gmailSyncService.CredentialsHint;
         _ = LoadAsync();
         Applications.CollectionChanged += async (_, __) => await SaveAsync();
         Applications.CollectionChanged += (_, __) => RefreshFilter();
@@ -111,6 +122,31 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshFilter();
 
         await SaveAsync();
+    }
+
+    [RelayCommand]
+    private async Task SyncGmailAsync()
+    {
+        if (IsGmailSyncInProgress)
+            return;
+
+        IsGmailSyncInProgress = true;
+        GmailStatusMessage = "Syncing Gmail...";
+
+        try
+        {
+            GmailStatusMessage = await _gmailSyncService.SyncAsync(Applications, GmailQuery);
+            RefreshFilter();
+            await SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            GmailStatusMessage = ex.Message;
+        }
+        finally
+        {
+            IsGmailSyncInProgress = false;
+        }
     }
 
     [RelayCommand]
