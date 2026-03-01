@@ -38,7 +38,7 @@ public class GmailClientService
         var service = await CreateServiceAsync(cancellationToken);
 
         var listRequest = service.Users.Messages.List("me");
-        listRequest.Q = string.IsNullOrWhiteSpace(query) ? "newer_than:90d" : query.Trim();
+        listRequest.Q = BuildEffectiveQuery(query);
         listRequest.MaxResults = pageSize;
         listRequest.PageToken = pageToken;
 
@@ -58,6 +58,36 @@ public class GmailClientService
         return new GmailMessagePage(
             messages.OrderByDescending(x => x.ReceivedAt).ToList(),
             listResponse.NextPageToken);
+    }
+
+    private static string BuildEffectiveQuery(string query)
+    {
+        var baseQuery = string.IsNullOrWhiteSpace(query) ? "newer_than:90d" : query.Trim();
+        if (baseQuery.Contains("is:important", StringComparison.OrdinalIgnoreCase))
+            return baseQuery;
+
+        return $"is:important ({baseQuery})";
+    }
+
+    public async Task<IReadOnlyList<GmailMessage>> GetThreadMessagesAsync(
+        string threadId,
+        int maxMessages = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+            return Array.Empty<GmailMessage>();
+
+        var service = await CreateServiceAsync(cancellationToken);
+        var thread = await service.Users.Threads.Get("me", threadId).ExecuteAsync(cancellationToken);
+        if (thread.Messages is null || thread.Messages.Count == 0)
+            return Array.Empty<GmailMessage>();
+
+        return thread.Messages
+            .Select(ToMessage)
+            .OrderByDescending(x => x.ReceivedAt)
+            .Take(Math.Max(1, maxMessages))
+            .OrderBy(x => x.ReceivedAt)
+            .ToList();
     }
 
     private async Task<GmailService> CreateServiceAsync(CancellationToken cancellationToken)
@@ -109,6 +139,7 @@ public class GmailClientService
         return new GmailMessage
         {
             Id = message.Id ?? "",
+            ThreadId = message.ThreadId ?? "",
             Subject = subject,
             From = from,
             Snippet = message.Snippet ?? "",

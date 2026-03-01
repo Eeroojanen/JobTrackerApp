@@ -8,6 +8,14 @@ namespace JobTracker.Services;
 
 public class GmailSyncService
 {
+    private static readonly string[] IgnoredSenderDomains =
+    {
+        "linkedin.com",
+        "linkedinmail.com"
+    };
+
+    private const int ThreadContextMessageCount = 8;
+    private const int RecentMatchedEmailHistoryLimit = 8;
     private readonly GmailClientService _gmailClientService = new();
     private readonly ApplicationMatcherService _matcher = new();
     private readonly JobInboxAgent _agent;
@@ -55,7 +63,15 @@ public class GmailSyncService
                 if (applications.Any(application => application.LastEmailMessageId == message.Id))
                     continue;
 
-                var review = await _agent.ReviewAsync(applications, message, cancellationToken);
+                if (ShouldIgnoreMessage(message))
+                    continue;
+
+                var threadMessages = await _gmailClientService.GetThreadMessagesAsync(
+                    message.ThreadId,
+                    ThreadContextMessageCount,
+                    cancellationToken);
+
+                var review = await _agent.ReviewAsync(applications, message, threadMessages, cancellationToken);
                 reviewed++;
 
                 if (!review.Decision.IsJobRelated)
@@ -94,6 +110,8 @@ public class GmailSyncService
                     application.Status = review.Decision.SuggestedStatus.Value;
                     updated++;
                 }
+
+                RecordRecentMatchedEmail(application, message);
             }
 
             nextPageToken = page.NextPageToken;
@@ -117,5 +135,43 @@ public class GmailSyncService
         {
             application.KnownSenderDomains.Add(message.SenderDomain);
         }
+    }
+
+    private static void RecordRecentMatchedEmail(JobApplication application, GmailMessage message)
+    {
+        application.RecentMatchedEmails.RemoveAll(item => item.MessageId == message.Id);
+        application.RecentMatchedEmails.Insert(0, new ApplicationEmailHistoryEntry
+        {
+            MessageId = message.Id,
+            ThreadId = message.ThreadId,
+            Subject = message.Subject,
+            Snippet = message.Snippet,
+            SenderEmail = message.SenderEmail,
+            ReceivedAt = message.ReceivedAt,
+            StatusAtTime = application.Status
+        });
+
+        if (application.RecentMatchedEmails.Count > RecentMatchedEmailHistoryLimit)
+        {
+            application.RecentMatchedEmails.RemoveRange(
+                RecentMatchedEmailHistoryLimit,
+                application.RecentMatchedEmails.Count - RecentMatchedEmailHistoryLimit);
+        }
+    }
+
+    private static bool ShouldIgnoreMessage(GmailMessage message)
+    {
+        var senderDomain = (message.SenderDomain ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(senderDomain) &&
+            IgnoredSenderDomains.Any(domain =>
+                senderDomain.Equals(domain, System.StringComparison.OrdinalIgnoreCase) ||
+                senderDomain.EndsWith($".{domain}", System.StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        var subject = (message.Subject ?? "").Trim();
+        return subject.Contains("linkedin job alert", System.StringComparison.OrdinalIgnoreCase) ||
+               subject.Contains("linkedin alert", System.StringComparison.OrdinalIgnoreCase);
     }
 }

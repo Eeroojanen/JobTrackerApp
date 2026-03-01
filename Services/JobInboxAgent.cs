@@ -23,12 +23,16 @@ public sealed class JobInboxAgent
     public async Task<JobInboxAgentResult> ReviewAsync(
         IList<JobApplication> applications,
         GmailMessage message,
+        IReadOnlyList<GmailMessage>? threadMessages = null,
         CancellationToken cancellationToken = default)
     {
-        var rankedCandidates = _retrieval.RankCandidates(applications, message, maxCandidates: 5);
+        var rankedCandidates = _retrieval.RankCandidates(applications, message, maxCandidates: 6);
         var request = new JobInboxAgentRequest
         {
             Email = message,
+            ThreadMessages = (threadMessages ?? new[] { message })
+                .Select(ToEmailContext)
+                .ToArray(),
             Candidates = rankedCandidates
                 .Select(match => new JobInboxAgentCandidate
                 {
@@ -38,6 +42,21 @@ public sealed class JobInboxAgent
                     Aliases = match.Application.CompanyAliases.ToArray(),
                     KnownSenderEmails = match.Application.KnownSenderEmails.ToArray(),
                     KnownSenderDomains = match.Application.KnownSenderDomains.ToArray(),
+                    RecentMatchedEmails = match.Application.RecentMatchedEmails
+                        .OrderByDescending(item => item.ReceivedAt)
+                        .Take(5)
+                        .OrderBy(item => item.ReceivedAt)
+                        .Select(item => new JobInboxAgentCandidateEmailHistory
+                        {
+                            MessageId = item.MessageId,
+                            ThreadId = item.ThreadId,
+                            Subject = item.Subject,
+                            Snippet = item.Snippet,
+                            SenderEmail = item.SenderEmail,
+                            ReceivedAt = item.ReceivedAt,
+                            StatusAtTime = item.StatusAtTime
+                        })
+                        .ToArray(),
                     RetrievalConfidence = match.Confidence,
                     RetrievalReason = match.Reason
                 })
@@ -53,6 +72,22 @@ public sealed class JobInboxAgent
         {
             Decision = decision,
             Application = application
+        };
+    }
+
+    private static JobInboxAgentEmailContext ToEmailContext(GmailMessage message)
+    {
+        return new JobInboxAgentEmailContext
+        {
+            MessageId = message.Id,
+            ThreadId = message.ThreadId,
+            From = message.From,
+            SenderEmail = message.SenderEmail,
+            SenderDomain = message.SenderDomain,
+            Subject = message.Subject,
+            Snippet = message.Snippet,
+            BodyText = message.BodyText,
+            ReceivedAt = message.ReceivedAt
         };
     }
 }

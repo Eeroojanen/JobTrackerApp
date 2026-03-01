@@ -69,6 +69,16 @@ public sealed class OpenAiJobInboxAgentModel : IJobInboxAgentModel
             aliases = candidate.Aliases,
             known_sender_emails = candidate.KnownSenderEmails,
             known_sender_domains = candidate.KnownSenderDomains,
+            recent_matched_emails = candidate.RecentMatchedEmails.Select(item => new
+            {
+                message_id = item.MessageId,
+                thread_id = item.ThreadId,
+                subject = item.Subject,
+                snippet = TrimText(item.Snippet, 400),
+                sender_email = item.SenderEmail,
+                received_at = item.ReceivedAt.ToString("O", CultureInfo.InvariantCulture),
+                status_at_time = item.StatusAtTime.ToString()
+            }),
             retrieval_confidence = candidate.RetrievalConfidence,
             retrieval_reason = candidate.RetrievalReason
         });
@@ -81,18 +91,34 @@ public sealed class OpenAiJobInboxAgentModel : IJobInboxAgentModel
                 sender_email = request.Email.SenderEmail,
                 sender_domain = request.Email.SenderDomain,
                 subject = request.Email.Subject,
-                snippet = request.Email.Snippet,
-                body = request.Email.BodyText,
+                snippet = TrimText(request.Email.Snippet, 500),
+                body = TrimText(request.Email.BodyText, 2500),
                 received_at = request.Email.ReceivedAt.ToString("O", CultureInfo.InvariantCulture)
             },
+            thread_messages = request.ThreadMessages.Select(message => new
+            {
+                message_id = message.MessageId,
+                thread_id = message.ThreadId,
+                from = message.From,
+                sender_email = message.SenderEmail,
+                sender_domain = message.SenderDomain,
+                subject = message.Subject,
+                snippet = TrimText(message.Snippet, 400),
+                body = TrimText(message.BodyText, 1200),
+                received_at = message.ReceivedAt.ToString("O", CultureInfo.InvariantCulture)
+            }),
             candidate_applications = candidates,
             instructions = new[]
             {
                 "You are a job application inbox agent.",
                 "Decide if the email is related to a job application process.",
+                "Treat LinkedIn notifications, LinkedIn Job Alerts, job board digests, and promoted role emails as not job-related unless the message is clearly a direct recruiter or hiring-process email.",
+                "Use the thread_messages as the primary conversation history for the current email.",
+                "Use recent_matched_emails under each candidate to understand the prior application timeline and past recruiter messages.",
                 "Use the candidate applications only when selecting application_id. If none fit, return null.",
                 "Be conservative with newsletters, promotions, discount offers, signatures, and footer text.",
-                "Only suggest a status when the email clearly changes or confirms the application state.",
+                "Make the status decision from the latest message in context, but use earlier thread messages to resolve ambiguity.",
+                "Only suggest a status when the conversation clearly changes or confirms the application state.",
                 "Valid statuses are Pending, Proceed, Rejected, or null.",
                 "Set needs_human_review to true when evidence is weak, mixed, or ambiguous.",
                 "Return JSON only."
@@ -203,6 +229,17 @@ public sealed class OpenAiJobInboxAgentModel : IJobInboxAgentModel
         }
 
         return trimmed;
+    }
+
+    private static string TrimText(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "";
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength
+            ? trimmed
+            : $"{trimmed[..maxLength]}...";
     }
 
     private static string EnsureTrailingSlash(string value)

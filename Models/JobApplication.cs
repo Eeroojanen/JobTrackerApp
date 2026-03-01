@@ -17,4 +17,5 @@ public class JobApplication
     public List<string> CompanyAliases { get; set; } = new();
     public List<string> KnownSenderEmails { get; set; } = new();
     public List<string> KnownSenderDomains { get; set; } = new();
+    public List<ApplicationEmailHistoryEntry> RecentMatchedEmails { get; set; } = new();
 }
