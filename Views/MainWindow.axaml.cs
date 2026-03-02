@@ -16,7 +16,16 @@ public partial class MainWindow : Window
     private async void StatusSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)
-            await vm.StatusChangedAsync();
+        {
+            try
+            {
+                await vm.StatusChangedAsync();
+            }
+            catch (System.Exception ex)
+            {
+                vm.GmailStatusMessage = ex.Message;
+            }
+        }
     }
 
     private async void ImportFromExcel(object? sender, RoutedEventArgs e)

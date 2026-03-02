@@ -26,7 +26,7 @@
       <StackPanel Spacing="10">
         <TextBlock FontSize="18" FontWeight="SemiBold" Text="Job Applications" />
 
-        <Grid ColumnDefinitions="260,180,140,160,120,120,120" ColumnSpacing="10">
+        <Grid ColumnDefinitions="2*,170,130,150,110,110,110" ColumnSpacing="10">
           <TextBox Grid.Column="0"
                    Watermark="Company title"
                    Text="{Binding CompanyName, UpdateSourceTrigger=PropertyChanged}" />
@@ -67,7 +67,7 @@
                      VerticalAlignment="Center"
                      Text="{Binding GmailStatusMessage}"
                      TextWrapping="Wrap"
-                     MaxWidth="360" />
+                     MaxWidth="280" />
         </Grid>
 
         <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
@@ -87,6 +87,29 @@
           <TextBox Grid.Column="2"
                    Watermark="Status label for Rejected (e.g., Hylatty)"
                    Text="{Binding ImportRejectedLabel, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+          <Border Padding="10,8" CornerRadius="8" Background="#1E3A8A">
+            <StackPanel>
+              <TextBlock Text="Proceed" Foreground="White" Opacity="0.85" />
+              <TextBlock Text="{Binding ProceedCount}" FontSize="22" FontWeight="Bold" Foreground="White" />
+            </StackPanel>
+          </Border>
+
+          <Border Grid.Column="1" Padding="10,8" CornerRadius="8" Background="#B45309">
+            <StackPanel>
+              <TextBlock Text="Pending" Foreground="White" Opacity="0.85" />
+              <TextBlock Text="{Binding PendingCount}" FontSize="22" FontWeight="Bold" Foreground="White" />
+            </StackPanel>
+          </Border>
+
+          <Border Grid.Column="2" Padding="10,8" CornerRadius="8" Background="#991B1B">
+            <StackPanel>
+              <TextBlock Text="Rejected" Foreground="White" Opacity="0.85" />
+              <TextBlock Text="{Binding RejectedCount}" FontSize="22" FontWeight="Bold" Foreground="White" />
+            </StackPanel>
+          </Border>
         </Grid>
       </StackPanel>
     </Border>

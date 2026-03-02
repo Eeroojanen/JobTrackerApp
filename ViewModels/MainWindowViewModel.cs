@@ -62,6 +62,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool isGmailSyncInProgress;
 
+    [ObservableProperty]
+    private int proceedCount;
+
+    [ObservableProperty]
+    private int pendingCount;
+
+    [ObservableProperty]
+    private int rejectedCount;
+
     public ApplicationStatus[] Statuses { get; } =
         Enum.GetValues(typeof(ApplicationStatus)).Cast<ApplicationStatus>().ToArray();
 
@@ -160,6 +169,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public async Task StatusChangedAsync()
     {
+        UpdateStatusCounts();
         await SaveAsync();
     }
 
@@ -250,6 +260,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void RefreshFilter()
     {
+        UpdateStatusCounts();
+
         var query = (SearchText ?? string.Empty).Trim();
         FilteredApplications.Clear();
 
@@ -266,5 +278,12 @@ public partial class MainWindowViewModel : ViewModelBase
             if (item.CompanyName.ToLowerInvariant().Contains(normalizedQuery))
                 FilteredApplications.Add(item);
         }
+    }
+
+    private void UpdateStatusCounts()
+    {
+        ProceedCount = Applications.Count(item => item.Status == ApplicationStatus.Proceed);
+        PendingCount = Applications.Count(item => item.Status == ApplicationStatus.Pending);
+        RejectedCount = Applications.Count(item => item.Status == ApplicationStatus.Rejected);
     }
 }
